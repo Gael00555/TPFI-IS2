@@ -91,3 +91,20 @@ def test_receive_raises_on_json_that_is_not_an_object(
 
     with pytest.raises(ValueError):
         receive_message(right)
+
+
+def test_send_message_serializes_decimal_from_dynamodb(
+    socket_pair: tuple[socket.socket, socket.socket],
+) -> None:
+    """Un Decimal (tipo que boto3 devuelve para numeros de DynamoDB) se serializa
+    correctamente, sin lanzar TypeError.
+    """
+    from decimal import Decimal
+
+    left, right = socket_pair
+    payload = {"idReq": Decimal("226"), "seqID": Decimal("22.5")}
+
+    send_message(left, payload)
+    received = receive_message(right)
+
+    assert received == {"idReq": 226, "seqID": 22.5}

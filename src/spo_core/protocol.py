@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import socket
+from decimal import Decimal
 from typing import Any
 
 ENCODING = "utf-8"
@@ -21,9 +22,18 @@ class ConnectionClosedError(Exception):
     """Se lanza cuando el socket se cierra mientras se esperaba un mensaje."""
 
 
+def _json_default(value: object) -> int | float:
+    """Convierte tipos no serializables por json nativamente (como Decimal,
+    que boto3 devuelve para los atributos numericos de DynamoDB) a int o float.
+    """
+    if isinstance(value, Decimal):
+        return int(value) if value == value.to_integral_value() else float(value)
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
+
+
 def send_message(sock: socket.socket, payload: dict[str, Any]) -> None:
     """Serializa payload a JSON y lo envia como una linea terminada en \\n."""
-    line = json.dumps(payload) + "\n"
+    line = json.dumps(payload, default=_json_default) + "\n"
     sock.sendall(line.encode(ENCODING))
 
 
