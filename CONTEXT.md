@@ -1,0 +1,1 @@
+# Contexto de uso de IA Este proyecto fue desarrollado con asistencia de Claude (Anthropic) para: - Configuración del entorno AWS/Python (boto3, AWS CLI, credenciales). - Generación y ajuste del esqueleto de proyecto con CookieCutter. 

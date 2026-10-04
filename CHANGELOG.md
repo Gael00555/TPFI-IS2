@@ -1,0 +1,1 @@
+ # Changelog Todas las modificaciones notables de este proyecto se documentan en este archivo. ## [0.1.0] - 2026-09-24 ### Added - Estructura inicial del proyecto generada con CookieCutter. - Configuración de linters (ruff, black), type checkers (mypy, pyright) y seguridad (bandit).
