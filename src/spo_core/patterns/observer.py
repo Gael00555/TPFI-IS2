@@ -46,7 +46,7 @@ class EventPublisher:
     def notify(self, data: dict[str, Any]) -> None:
         """Notifica el evento a todos los suscriptores activos.
 
-        Si la entrega hacia algún suscriptor falla (por ejemplo, socket cerrado),
+        Si la entrega hacia algún suscriptor falla,
         lo remueve automáticamente de la lista para evitar conexiones huérfanas.
         """
         failed_subscribers: list[Subscriber] = []
@@ -60,7 +60,7 @@ class EventPublisher:
                 logger.warning("Error al notificar al suscriptor: %s", err)
                 failed_subscribers.append(subscriber)
 
-        # Limpieza de suscriptores caídos o desconectados
+    
         for dead_subscriber in failed_subscribers:
             self.unsubscribe(dead_subscriber)
 
