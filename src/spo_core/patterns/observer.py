@@ -60,7 +60,7 @@ class EventPublisher:
                 logger.warning("Error al notificar al suscriptor: %s", err)
                 failed_subscribers.append(subscriber)
 
-      # Limpieza de suscriptores caídos o desconectados
+        # Limpieza de suscriptores caídos o desconectados
         for dead_subscriber in failed_subscribers:
             self.unsubscribe(dead_subscriber)
 
