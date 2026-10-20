@@ -60,3 +60,4 @@ venv/
 input.json
 output.json
 key.json
+input_*.json

@@ -20,7 +20,7 @@ CORPORATE_DATA_FIELDS = (
     "cp",
     "CUIT",
     "domicilio",
-    "idReq",
+    "idreq",
     "idSeq",
     "localidad",
     "provincia",
