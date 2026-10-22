@@ -59,7 +59,10 @@ def main(argv: list[str]) -> int:
     try:
         server = SingletonProxyObserverServer(args.port, CorporateService(), verbose=args.verbose)
     except OSError as err:
-        print(f"No se pudo iniciar el servidor en el puerto {args.port}: {err}", file=sys.stderr)
+        print(
+            f"No se pudo iniciar el servidor en el puerto {args.port}: {err}",
+            file=sys.stderr,
+        )
         return 1
 
     print(f"Servidor escuchando en el puerto {args.port}. Ctrl+C para detener.")

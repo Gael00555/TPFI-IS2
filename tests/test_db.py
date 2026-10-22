@@ -62,7 +62,9 @@ def test_get_record_returns_none_when_missing(fake_resource: FakeResource) -> No
     assert data.get_record("no-existe") is None
 
 
-def test_apply_update_creates_new_record_with_blank_fields(fake_resource: FakeResource) -> None:
+def test_apply_update_creates_new_record_with_blank_fields(
+    fake_resource: FakeResource,
+) -> None:
     """Un set sobre un id nuevo crea el registro con los campos faltantes en blanco."""
     data = db.CorporateDataSingleton()
 
@@ -101,7 +103,9 @@ def test_corporate_data_is_singleton(fake_resource: FakeResource) -> None:
     assert db.CorporateDataSingleton() is db.CorporateDataSingleton()
 
 
-def test_corporate_log_is_singleton_and_independent(fake_resource: FakeResource) -> None:
+def test_corporate_log_is_singleton_and_independent(
+    fake_resource: FakeResource,
+) -> None:
     """CorporateLogSingleton es un singleton independiente de CorporateDataSingleton."""
     log_a = db.CorporateLogSingleton()
     log_b = db.CorporateLogSingleton()

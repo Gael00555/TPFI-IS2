@@ -61,7 +61,9 @@ def fake_service(monkeypatch: pytest.MonkeyPatch) -> Iterator[CorporateService]:
 
 
 @pytest.fixture
-def running_server(fake_service: CorporateService) -> Iterator[SingletonProxyObserverServer]:
+def running_server(
+    fake_service: CorporateService,
+) -> Iterator[SingletonProxyObserverServer]:
     """Levanta el servidor real en un puerto efimero (0 = elegido por el SO)."""
     server = SingletonProxyObserverServer(0, fake_service, verbose=False)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -72,7 +74,9 @@ def running_server(fake_service: CorporateService) -> Iterator[SingletonProxyObs
     thread.join(timeout=2)
 
 
-def test_server_accepts_real_tcp_connection(running_server: SingletonProxyObserverServer) -> None:
+def test_server_accepts_real_tcp_connection(
+    running_server: SingletonProxyObserverServer,
+) -> None:
     """El servidor acepta una conexion TCP real y responde correctamente a un get."""
     port = running_server.server_address[1]
     client = socket.create_connection(("localhost", port), timeout=2)
@@ -93,7 +97,10 @@ def test_server_handles_multiple_concurrent_clients(
     clients = [socket.create_connection(("localhost", port), timeout=2) for _ in range(5)]
     try:
         for i, client in enumerate(clients):
-            send_message(client, {"UUID": f"cpu-{i}", "ACTION": "set", "ID": f"id-{i}", "sede": "A"})
+            send_message(
+                client,
+                {"UUID": f"cpu-{i}", "ACTION": "set", "ID": f"id-{i}", "sede": "A"},
+            )
         for client in clients:
             response = receive_message(client)
             assert response["ACTION"] == "set"
@@ -102,7 +109,9 @@ def test_server_handles_multiple_concurrent_clients(
             client.close()
 
 
-def test_starting_server_twice_on_same_port_fails(fake_service: CorporateService) -> None:
+def test_starting_server_twice_on_same_port_fails(
+    fake_service: CorporateService,
+) -> None:
     """Levantar un segundo servidor en el mismo puerto falla (requisito de la consigna)."""
     first = SingletonProxyObserverServer(0, fake_service, verbose=False)
     port = first.server_address[1]

@@ -82,7 +82,9 @@ def _stop_after(stop_event: threading.Event, n: int) -> tuple[Callable[[float], 
     return fake_sleep, calls
 
 
-def test_subscribes_and_receives_multiple_notifications(capsys: pytest.CaptureFixture[str]) -> None:
+def test_subscribes_and_receives_multiple_notifications(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Una sola conexión puede traer la confirmación y varias notificaciones."""
     notifications = [{"ACTION": "change", "ID": "r1"}, {"ACTION": "change", "ID": "r2"}]
     connector = FakeConnector([lambda sock: _server_thread(sock, extra_messages=notifications)])
@@ -106,7 +108,9 @@ def test_subscribes_and_receives_multiple_notifications(capsys: pytest.CaptureFi
     assert '"ID": "r2"' in captured.out
 
 
-def test_reconnects_after_connection_refused(capsys: pytest.CaptureFixture[str]) -> None:
+def test_reconnects_after_connection_refused(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Si la primera conexión falla, reintenta y logra conectarse en el segundo intento."""
     succeeded = FakeConnector([lambda sock: _server_thread(sock)])
     attempts = {"n": 0}
@@ -135,7 +139,9 @@ def test_reconnects_after_connection_refused(capsys: pytest.CaptureFixture[str])
     assert '"STATUS": "OK"' in captured.out
 
 
-def test_discards_malformed_message_without_disconnecting(capsys: pytest.CaptureFixture[str]) -> None:
+def test_discards_malformed_message_without_disconnecting(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """Un mensaje con JSON invalido se descarta sin cortar la conexión."""
     connector = FakeConnector([lambda sock: _server_thread(sock, raw_before_close=b"esto no es json\n")])
     stop_event = threading.Event()

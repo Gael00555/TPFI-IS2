@@ -11,7 +11,7 @@ import pytest
 
 from spo_core import db
 from spo_core.patterns.singleton import SingletonMeta
-from spo_core.protocol import receive_message, send_message
+from spo_core.protocol import ConnectionClosedError, receive_message, send_message
 from spo_core.server_core import handle_connection
 from spo_core.service import CorporateService
 
@@ -153,7 +153,7 @@ def test_subscribe_responds_ok(connected_server: ConnectedServer) -> None:
 
 
 def test_missing_uuid_returns_error(connected_server: ConnectedServer) -> None:
-    """Un mensaje sin UUID responde error, sin requerir datos minimos de mas."""
+    """Un mensaje sin UUID responde error."""
     connected_server.send({"ACTION": "get", "ID": "algo"})
 
     response = connected_server.receive()
@@ -197,11 +197,11 @@ def test_set_notifies_subscribed_client(service: CorporateService) -> None:
     """Un set realizado por un cliente notifica a otro cliente ya suscripto."""
     subscriber = ConnectedServer(service)
     subscriber.send({"UUID": "cpu-obs", "ACTION": "subscribe"})
-    subscriber.receive()  # confirmacion del subscribe
+    subscriber.receive()
 
     actor = ConnectedServer(service)
     actor.send({"UUID": "cpu-actor", "ACTION": "set", "ID": "UADER-TEST-03", "sede": "FCyT"})
-    actor.receive()  # respuesta directa al actor
+    actor.receive()
 
     notification = subscriber.receive()
 
@@ -210,3 +210,25 @@ def test_set_notifies_subscribed_client(service: CorporateService) -> None:
 
     subscriber.close()
     actor.close()
+
+
+def test_get_closes_connection_after_response(
+    connected_server: ConnectedServer,
+) -> None:
+    """Tras responder un get, el servidor cierra la conexion (consigna)."""
+    connected_server.send({"UUID": "cpu-1", "ACTION": "get", "ID": "no-existe"})
+    connected_server.receive()
+
+    with pytest.raises(ConnectionClosedError):
+        connected_server.receive()
+
+
+def test_list_closes_connection_after_response(
+    connected_server: ConnectedServer,
+) -> None:
+    """Tras responder un list, el servidor cierra la conexion (consigna)."""
+    connected_server.send({"UUID": "cpu-1", "ACTION": "list"})
+    connected_server.receive()
+
+    with pytest.raises(ConnectionClosedError):
+        connected_server.receive()

@@ -24,7 +24,9 @@ def socket_pair() -> Iterator[tuple[socket.socket, socket.socket]]:
     right.close()
 
 
-def test_send_and_receive_roundtrip(socket_pair: tuple[socket.socket, socket.socket]) -> None:
+def test_send_and_receive_roundtrip(
+    socket_pair: tuple[socket.socket, socket.socket],
+) -> None:
     """Lo que se envia de un lado se recibe identico del otro."""
     left, right = socket_pair
     payload = {"UUID": "cpu-1", "ACTION": "get", "ID": "UADER-FCYT-IS2"}

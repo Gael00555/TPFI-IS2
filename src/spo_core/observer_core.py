@@ -68,7 +68,10 @@ def _subscribe_and_listen(
         try:
             message = receive_message(sock)
         except (json.JSONDecodeError, ValueError) as err:
-            print(f"Mensaje invalido recibido del servidor, se descarta: {err}", file=sys.stderr)
+            print(
+                f"Mensaje invalido recibido del servidor, se descarta: {err}",
+                file=sys.stderr,
+            )
             continue
         _emit(message, output_path)
 
@@ -95,7 +98,10 @@ def run_observer_client(
         try:
             sock = connector(host, port)
         except OSError as err:
-            print(f"No se pudo conectar a {host}:{port}: {err}. Reintentando en {retry_seconds}s.", file=sys.stderr)
+            print(
+                f"No se pudo conectar a {host}:{port}: {err}. Reintentando en {retry_seconds}s.",
+                file=sys.stderr,
+            )
             sleep_func(retry_seconds)
             continue
 

@@ -66,7 +66,10 @@ class CorporateDataSingleton(metaclass=SingletonMeta):
         """
         existing = self.get_record(record_id)
         if existing is None:
-            existing = {"id": record_id, **{field: "" for field in CORPORATE_DATA_FIELDS}}
+            existing = {
+                "id": record_id,
+                **{field: "" for field in CORPORATE_DATA_FIELDS},
+            }
 
         merged = {**existing, **fields, "id": record_id}
         self._table.put_item(Item=merged)

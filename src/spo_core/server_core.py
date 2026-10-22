@@ -2,9 +2,8 @@
 
 Esta capa recibe un socket ya aceptado y decide qué hacer con los mensajes
 JSON que llegan por él, delegando toda la lógica de negocio en CorporateService.
-Se mantiene separada de la clase que realmente escucha en el puerto TCP
-(singletonproxyobserver.py) para poder testearla con sockets en memoria
-(socket.socketpair), sin abrir puertos reales.
+Se mantiene separada de la clase que escucha en el puerto TCP (server_app.py)
+para poder testearla con sockets en memoria, sin abrir puertos reales.
 """
 
 from __future__ import annotations
@@ -30,15 +29,12 @@ RESERVED_KEYS = {"UUID", "ACTION", "ID"}
 
 
 class ConnectionWriter:
-    """Escritor de un socket con lock compartido entre respuestas directas
-    y notificaciones asincronas (Observer), para que nunca se intercalen.
+    """Escritor de un socket con un lock compartido entre todas las escrituras.
 
-    Un mismo socket puede recibir escrituras desde dos hilos distintos: el
-    hilo que atiende esta conexion (respondiendo a get/set/list/subscribe) y
-    cualquier otro hilo que procese un "set" de otro cliente y dispare una
-    notificacion hacia este socket si esta suscripto. El lock serializa
-    todas las escrituras, sin importar de donde vengan, para que nunca se
-    intercalen los bytes de dos envios simultaneos.
+    Un mismo socket puede recibir escrituras desde dos hilos distintos: el que
+    atiende la conexión (sus respuestas) y el que procesa el "set" de otro
+    cliente (la notificación del Observer). El lock evita que se intercalen
+    los bytes de dos envíos simultáneos.
     """
 
     def __init__(self, sock: socket.socket) -> None:
@@ -47,7 +43,7 @@ class ConnectionWriter:
         self._lock = threading.Lock()
 
     def send(self, data: dict[str, Any]) -> None:
-        """Envia data al socket, serializado por el lock. Puede lanzar OSError."""
+        """Envía data al socket, serializado por el lock. Puede lanzar OSError."""
         with self._lock:
             send_message(self._sock, data)
 
@@ -67,11 +63,12 @@ def _build_error_response(action: str | None, client_uuid: str | None, message: 
 
 
 def handle_connection(sock: socket.socket, service: CorporateService, *, verbose: bool = False) -> None:
-    """Atiende una conexion de principio a fin: lee mensajes y despacha acciones.
+    """Atiende una conexión de principio a fin: lee mensajes y despacha acciones.
 
-    Se ejecuta en su propio hilo por conexion (ver singletonproxyobserver.py).
-    Termina cuando el socket se cierra (ConnectionClosedError), dando de baja
-    cualquier subscripcion activa de ese socket.
+    Se ejecuta en su propio hilo por conexión (ver server_app.py). Tras responder
+    un "get" o un "list" cierra la conexión, como pide la consigna. El "subscribe"
+    y el "set" mantienen la conexión abierta. Al terminar, da de baja cualquier
+    subscripción activa de ese socket.
     """
     session_id = str(uuid.uuid4())
     writer = ConnectionWriter(sock)
@@ -110,7 +107,7 @@ def handle_connection(sock: socket.socket, service: CorporateService, *, verbose
             if action == "list":
                 records = service.list_all(client_uuid=client_uuid, session_id=session_id)
                 writer.send({"ACTION": "list", "UUID": client_uuid, "DATA": records})
-                continue
+                break
 
             record_id = message.get("ID")
             if not isinstance(record_id, str) or not record_id:
@@ -123,9 +120,8 @@ def handle_connection(sock: socket.socket, service: CorporateService, *, verbose
                     writer.send({"ACTION": "get", "UUID": client_uuid, "DATA": record})
                 except RecordNotFoundError:
                     writer.send(_build_error_response(action, client_uuid, "Registro no encontrado."))
-                continue
+                break
 
-            # action == "set"
             fields = {k: v for k, v in message.items() if k not in RESERVED_KEYS}
             try:
                 result = service.set(record_id, fields, client_uuid=client_uuid, session_id=session_id)
@@ -134,8 +130,10 @@ def handle_connection(sock: socket.socket, service: CorporateService, *, verbose
                 writer.send(_build_error_response(action, client_uuid, str(err)))
 
     except ConnectionClosedError:
-        if verbose:
-            logger.info("Conexion cerrada. session=%s", session_id)
+        logger.debug("El cliente cerro la conexion. session=%s", session_id)
     finally:
         if is_subscribed:
             service.unsubscribe(writer)
+        sock.close()
+        if verbose:
+            logger.info("Conexion cerrada. session=%s", session_id)

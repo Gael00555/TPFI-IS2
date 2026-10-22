@@ -1,17 +1,18 @@
-"""Suite de aceptación: mapea cada punto exigido por la sección "Validación y
-Verificación" de la consigna a un escenario de prueba de punta a punta
-(servidor TCP real en un puerto efímero + clientes reales), para facilitar
-la trazabilidad entre el enunciado y los tests. La lógica de bajo nivel de
-cada componente ya está cubierta en los test_*.py especificos (singleton,
-proxy, observer, db, service, protocol, cli_args, client_core, observer_core,
-server_core, server_app); esta suite verifica el comportamiento integrado.
+"""Suite de aceptación: mapea cada punto de "Validación y Verificación" de la consigna.
+
+Cada escenario usa el servidor TCP real en un puerto efímero (con DynamoDB
+mockeado) y clientes reales, para facilitar la trazabilidad entre el enunciado
+y los tests. La lógica de bajo nivel está cubierta en los test_*.py específicos.
 """
 
 from __future__ import annotations
 
+import json
 import socket
+import tempfile
 import threading
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -22,8 +23,9 @@ from spo_core.cli_args import (
     parse_server_args,
     parse_singletonclient_args,
 )
+from spo_core.client_core import run_singleton_client
 from spo_core.patterns.singleton import SingletonMeta
-from spo_core.protocol import receive_message, send_message
+from spo_core.protocol import ConnectionClosedError, receive_message, send_message
 from spo_core.server_app import SingletonProxyObserverServer
 from spo_core.service import CorporateService
 
@@ -73,7 +75,9 @@ def fake_resource(monkeypatch: pytest.MonkeyPatch) -> Iterator[FakeResource]:
 
 
 @pytest.fixture
-def running_server(fake_resource: FakeResource) -> Iterator[tuple[SingletonProxyObserverServer, int]]:
+def running_server(
+    fake_resource: FakeResource,
+) -> Iterator[tuple[SingletonProxyObserverServer, int]]:
     """Levanta el servidor real en un puerto efimero, con DynamoDB mockeado."""
     server = SingletonProxyObserverServer(0, CorporateService(), verbose=False)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -89,7 +93,7 @@ def _connect(port: int) -> socket.socket:
     return socket.create_connection(("localhost", port), timeout=5)
 
 
-# --- 1. Camino feliz de cada accion, con auditoria en CorporateLog ---------
+# --- 1. Camino feliz de cada accion, con auditoria en CorporateLog ----------
 
 
 def test_acceptance_happy_path_set_get_list_subscribe(
@@ -105,20 +109,26 @@ def test_acceptance_happy_path_set_get_list_subscribe(
 
     actor = _connect(port)
     send_message(actor, {"UUID": "cpu-actor", "ACTION": "set", "ID": "ACC-01", "sede": "FCyT"})
-    set_response = receive_message(actor)
-    assert set_response["ACTION"] == "set"
+    assert receive_message(actor)["ACTION"] == "set"
 
     notification = receive_message(observer)
     assert notification["ACTION"] == "change"
     assert notification["ID"] == "ACC-01"
 
-    send_message(actor, {"UUID": "cpu-actor", "ACTION": "get", "ID": "ACC-01"})
-    get_response = receive_message(actor)
-    assert get_response["DATA"]["sede"] == "FCyT"
+    getter = _connect(port)
+    send_message(getter, {"UUID": "cpu-actor", "ACTION": "get", "ID": "ACC-01"})
+    assert receive_message(getter)["DATA"]["sede"] == "FCyT"
+    with pytest.raises(ConnectionClosedError):
+        receive_message(getter)  # la consigna: tras get, el servidor cierra la conexion
+    getter.close()
 
-    send_message(actor, {"UUID": "cpu-actor", "ACTION": "list"})
-    list_response = receive_message(actor)
+    lister = _connect(port)
+    send_message(lister, {"UUID": "cpu-actor", "ACTION": "list"})
+    list_response = receive_message(lister)
     assert any(item["id"] == "ACC-01" for item in list_response["DATA"])
+    with pytest.raises(ConnectionClosedError):
+        receive_message(lister)  # la consigna: tras list, el servidor cierra la conexion
+    lister.close()
 
     log_actions = {entry["action"] for entry in fake_resource.tables[db.CORPORATE_LOG_TABLE_NAME].items.values()}
     assert log_actions == {"subscribe", "set", "get", "list"}
@@ -170,14 +180,9 @@ def test_acceptance_request_missing_minimum_data(
 
 def test_acceptance_client_handles_server_down() -> None:
     """singletonclient.py maneja de forma controlada un servidor caido."""
-    from spo_core.client_core import run_singleton_client
 
     def refused_connector(host: str, port: int) -> socket.socket:
         raise ConnectionRefusedError("servidor caido (simulado)")
-
-    import json
-    import tempfile
-    from pathlib import Path
 
     with tempfile.TemporaryDirectory() as tmp:
         input_path = Path(tmp) / "input.json"
@@ -191,7 +196,9 @@ def test_acceptance_client_handles_server_down() -> None:
 # --- 5. Intento de levantar dos veces el servidor de aplicaciones -----------
 
 
-def test_acceptance_cannot_start_server_twice_on_same_port(fake_resource: FakeResource) -> None:
+def test_acceptance_cannot_start_server_twice_on_same_port(
+    fake_resource: FakeResource,
+) -> None:
     """Un segundo servidor en el mismo puerto falla, sin afectar al primero."""
     first = SingletonProxyObserverServer(0, CorporateService(), verbose=False)
     port = first.server_address[1]
@@ -202,7 +209,6 @@ def test_acceptance_cannot_start_server_twice_on_same_port(fake_resource: FakeRe
         with pytest.raises(OSError):
             SingletonProxyObserverServer(port, CorporateService(), verbose=False)
 
-        # El primer servidor sigue operativo pese al intento fallido del segundo.
         sock = _connect(port)
         send_message(sock, {"UUID": "cpu-1", "ACTION": "list"})
         response = receive_message(sock)
