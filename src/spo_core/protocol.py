@@ -41,7 +41,10 @@ def _readline(sock: socket.socket) -> bytes:
     """Lee bytes del socket hasta encontrar un \\n (excluido) o hasta que se cierre."""
     buffer = bytearray()
     while True:
-        chunk = sock.recv(1)
+        try:
+            chunk = sock.recv(1)
+        except OSError as err:
+            raise ConnectionClosedError(f"Conexion perdida: {err}") from err
         if not chunk:
             if buffer:
                 raise ConnectionClosedError("Socket cerrado a mitad de un mensaje.")

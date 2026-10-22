@@ -110,3 +110,17 @@ def test_send_message_serializes_decimal_from_dynamodb(
     received = receive_message(right)
 
     assert received == {"idReq": 226, "seqID": 22.5}
+
+
+class ResettingSocket:
+    """Socket falso cuyo recv simula un corte abrupto de la conexion."""
+
+    def recv(self, size: int) -> bytes:
+        """Simula el ConnectionResetError que Windows lanza al matar al servidor."""
+        raise ConnectionResetError("conexion restablecida por el host remoto")
+
+
+def test_receive_treats_connection_reset_as_closed() -> None:
+    """Un corte abrupto del socket se informa como ConnectionClosedError."""
+    with pytest.raises(ConnectionClosedError):
+        receive_message(ResettingSocket())  # type: ignore[arg-type]
