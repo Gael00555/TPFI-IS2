@@ -4,7 +4,7 @@ El enunciado no especifica como delimitar mensajes sobre el socket TCP (dato
 necesario porque TCP es un flujo continuo de bytes, no mensajes discretos).
 Se adopta como decision de diseño el framing mas simple que soporta conexiones
 persistentes (necesario para "subscribe"): cada mensaje es un objeto JSON en
-una unica linea, terminada en "\\n".
+una unica linea, terminada en un salto de linea.
 """
 
 from __future__ import annotations
@@ -23,8 +23,10 @@ class ConnectionClosedError(Exception):
 
 
 def _json_default(value: object) -> int | float:
-    """Convierte tipos no serializables por json nativamente (como Decimal,
-    que boto3 devuelve para los atributos numericos de DynamoDB) a int o float.
+    """Convierte un Decimal a int o float para poder serializarlo a JSON.
+
+    boto3 devuelve los atributos numericos de DynamoDB como Decimal, un tipo
+    que el modulo json no sabe serializar de forma nativa.
     """
     if isinstance(value, Decimal):
         return int(value) if value == value.to_integral_value() else float(value)
@@ -32,13 +34,13 @@ def _json_default(value: object) -> int | float:
 
 
 def send_message(sock: socket.socket, payload: dict[str, Any]) -> None:
-    """Serializa payload a JSON y lo envia como una linea terminada en \\n."""
+    """Serializa payload a JSON y lo envia como una linea terminada en salto de linea."""
     line = json.dumps(payload, default=_json_default) + "\n"
     sock.sendall(line.encode(ENCODING))
 
 
 def _readline(sock: socket.socket) -> bytes:
-    """Lee bytes del socket hasta encontrar un \\n (excluido) o hasta que se cierre."""
+    """Lee bytes del socket hasta encontrar un salto de linea o hasta que se cierre."""
     buffer = bytearray()
     while True:
         try:

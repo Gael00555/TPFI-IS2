@@ -20,8 +20,9 @@ def _server_thread(
     extra_messages: list[dict[str, object]] | None = None,
     raw_before_close: bytes | None = None,
 ) -> threading.Thread:
-    """Arranca un hilo que simula al servidor: confirma el subscribe, manda
-    mensajes adicionales y cierra la conexión.
+    """Arranca un hilo que simula al servidor.
+
+    Confirma el subscribe, manda mensajes adicionales y cierra la conexión.
     """
 
     def _run() -> None:
@@ -40,8 +41,9 @@ def _server_thread(
 
 
 class FakeConnector:
-    """Devuelve, en cada llamada, el extremo cliente de un nuevo socketpair,
-    arrancando en paralelo el hilo que simula al servidor para esa conexión.
+    """Devuelve, en cada llamada, el extremo cliente de un nuevo socketpair.
+
+    Arranca en paralelo el hilo que simula al servidor para esa conexión.
     """
 
     def __init__(self, servers: list[Callable[[socket.socket], threading.Thread]]) -> None:
@@ -67,7 +69,7 @@ class FakeConnector:
 def _stop_after(stop_event: threading.Event, n: int) -> tuple[Callable[[float], None], list[float]]:
     """Crea un sleep_func falso que activa stop_event tras la n-esima llamada.
 
-    Esto es lo que le pone fin al bucle de reconexion infinito de
+    Esto es lo que le pone fin al bucle de reconexión infinito de
     run_observer_client en los tests: en lugar de depender del timing del
     hilo que simula al servidor, es el propio hilo principal (vía sleep_func)
     el que decide, de forma determinista, cuándo dejar de reintentar.
@@ -82,9 +84,7 @@ def _stop_after(stop_event: threading.Event, n: int) -> tuple[Callable[[float], 
     return fake_sleep, calls
 
 
-def test_subscribes_and_receives_multiple_notifications(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
+def test_subscribes_and_receives_multiple_notifications(capsys: pytest.CaptureFixture[str]) -> None:
     """Una sola conexión puede traer la confirmación y varias notificaciones."""
     notifications = [{"ACTION": "change", "ID": "r1"}, {"ACTION": "change", "ID": "r2"}]
     connector = FakeConnector([lambda sock: _server_thread(sock, extra_messages=notifications)])
@@ -108,9 +108,7 @@ def test_subscribes_and_receives_multiple_notifications(
     assert '"ID": "r2"' in captured.out
 
 
-def test_reconnects_after_connection_refused(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
+def test_reconnects_after_connection_refused(capsys: pytest.CaptureFixture[str]) -> None:
     """Si la primera conexión falla, reintenta y logra conectarse en el segundo intento."""
     succeeded = FakeConnector([lambda sock: _server_thread(sock)])
     attempts = {"n": 0}
@@ -139,10 +137,8 @@ def test_reconnects_after_connection_refused(
     assert '"STATUS": "OK"' in captured.out
 
 
-def test_discards_malformed_message_without_disconnecting(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """Un mensaje con JSON invalido se descarta sin cortar la conexión."""
+def test_discards_malformed_message_without_disconnecting(capsys: pytest.CaptureFixture[str]) -> None:
+    """Un mensaje con JSON inválido se descarta sin cortar la conexión."""
     connector = FakeConnector([lambda sock: _server_thread(sock, raw_before_close=b"esto no es json\n")])
     stop_event = threading.Event()
     fake_sleep, _ = _stop_after(stop_event, n=1)

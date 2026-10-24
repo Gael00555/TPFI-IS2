@@ -77,7 +77,11 @@ select = [
     "I",   # isort
     "B",   # flake8-bugbear
     "UP",  # pyupgrade
+    "D",   # pydocstyle (PEP257)
 ]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = [

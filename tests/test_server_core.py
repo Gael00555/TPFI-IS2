@@ -129,7 +129,7 @@ def test_set_without_fields_returns_error(connected_server: ConnectedServer) -> 
 
 
 def test_list_returns_all_records(connected_server: ConnectedServer) -> None:
-    """list devuelve todos los registros cargados hasta el momento."""
+    """La accion list devuelve todos los registros cargados hasta el momento."""
     connected_server.send({"UUID": "cpu-1", "ACTION": "set", "ID": "id-1", "sede": "A"})
     connected_server.receive()
     connected_server.send({"UUID": "cpu-1", "ACTION": "set", "ID": "id-2", "sede": "B"})

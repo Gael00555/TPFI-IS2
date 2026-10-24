@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import socket
 from collections.abc import Iterator
+from decimal import Decimal
 
 import pytest
 
@@ -24,9 +25,7 @@ def socket_pair() -> Iterator[tuple[socket.socket, socket.socket]]:
     right.close()
 
 
-def test_send_and_receive_roundtrip(
-    socket_pair: tuple[socket.socket, socket.socket],
-) -> None:
+def test_send_and_receive_roundtrip(socket_pair: tuple[socket.socket, socket.socket]) -> None:
     """Lo que se envia de un lado se recibe identico del otro."""
     left, right = socket_pair
     payload = {"UUID": "cpu-1", "ACTION": "get", "ID": "UADER-FCYT-IS2"}
@@ -64,7 +63,7 @@ def test_receive_raises_on_closed_socket_without_data(
 def test_receive_raises_on_closed_socket_mid_message(
     socket_pair: tuple[socket.socket, socket.socket],
 ) -> None:
-    """Si el socket se cierra a mitad de un mensaje (sin \\n), tambien se detecta."""
+    """Si el socket se cierra a mitad de un mensaje (sin salto de linea), tambien se detecta."""
     left, right = socket_pair
     left.sendall(b'{"incompleto": tr')
     left.close()
@@ -98,11 +97,10 @@ def test_receive_raises_on_json_that_is_not_an_object(
 def test_send_message_serializes_decimal_from_dynamodb(
     socket_pair: tuple[socket.socket, socket.socket],
 ) -> None:
-    """Un Decimal (tipo que boto3 devuelve para numeros de DynamoDB) se serializa
-    correctamente, sin lanzar TypeError.
-    """
-    from decimal import Decimal
+    """Un Decimal de DynamoDB se serializa correctamente, sin lanzar TypeError.
 
+    boto3 devuelve los numeros de DynamoDB como Decimal.
+    """
     left, right = socket_pair
     payload = {"idReq": Decimal("226"), "seqID": Decimal("22.5")}
 

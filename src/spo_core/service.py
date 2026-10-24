@@ -36,7 +36,7 @@ class CorporateService:
         )
 
     def _audit_set_hook(self, record_id: str, fields: dict[str, Any]) -> None:
-        """Hook interno: se llama antes de aplicar un set (ver UpdateProxy)."""
+        """Deja un punto de extension antes de aplicar un set (ver UpdateProxy)."""
         # El registro real de auditoria requiere el UUID/session del cliente,
         # que no forman parte de la firma de UpdateProxy. Por eso el audit
         # completo del "set" se hace en self.set(), no aqui; este hook queda
