@@ -34,7 +34,7 @@ jobs:
           pip install -e .
 
       - name: Generar documentacion con pdoc
-        run: . .venv/bin/activate && pdoc -o site singletonproxyobserver
+        run: . .venv/bin/activate && pdoc -o site spo_core
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
