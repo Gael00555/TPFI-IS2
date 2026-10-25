@@ -1,4 +1,5 @@
 """Top-level package for Trabajo Final."""
+
 """Servidor de datos corporativos con patrones Singleton, Proxy y Observer sobre DynamoDB.
 
 El paquete implementa un servidor TCP que centraliza el acceso a las tablas
